@@ -20,11 +20,17 @@ jobs:
       - name: Install Host Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential libpng-dev pkg-config git curl bzip2
+          sudo apt-get install -y build-essential libpng-dev pkg-config git curl bzip2 automake autoconf libtool
 
-      - name: Compile Repository Tools
+      - name: Compile Repository Tools and agbcc
         run: |
           make tools
+          if [ -d "tools/agbcc" ]; then
+            cd tools/agbcc
+            ./build.sh
+            ./install.sh
+            cd ../..
+          fi
 
       - name: Download and Setup ARM GCC 6
         run: |
