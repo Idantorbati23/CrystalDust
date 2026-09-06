@@ -15,7 +15,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: recursive
-          ref: progrees
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install Host Dependencies
         run: |
@@ -28,7 +28,7 @@ jobs:
           tar -xf gcc-arm-none-eabi.tar.bz2
           echo "$PWD/gcc-arm-none-eabi-6-2017-q2-update/bin" >> $GITHUB_PATH
 
-      - name: Build Modern ROM
+      - name: Build ROM
         run: |
           arm-none-eabi-gcc --version
           make -j$(nproc)
