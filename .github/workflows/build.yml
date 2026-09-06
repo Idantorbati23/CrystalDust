@@ -32,7 +32,6 @@ jobs:
             cd ../..
           fi
 
-<<<<<<< HEAD
       - name: Setup agbcc Paths
         run: |
           echo "AGBCC=$PWD/tools/agbcc" >> $GITHUB_PATH
@@ -40,18 +39,6 @@ jobs:
 
       - name: Build ROM
         run: |
-=======
-      - name: Download and Setup ARM GCC 6
-        run: |
-          curl -L -o gcc-arm-none-eabi.tar.bz2 https://developer.arm.com/-/media/Files/downloads/gnu-rm/6-2017q2/gcc-arm-none-eabi-6-2017-q2-update-linux.tar.bz2
-          tar -xf gcc-arm-none-eabi.tar.bz2
-          echo "$PWD/gcc-arm-none-eabi-6-2017-q2-update/bin" >> $GITHUB_PATH
-          echo "CPATH=$PWD/gcc-arm-none-eabi-6-2017-q2-update/lib/gcc/arm-none-eabi/6.3.1/include:$PWD/gcc-arm-none-eabi-6-2017-q2-update/arm-none-eabi/include" >> $GITHUB_ENV
-
-      - name: Build ROM
-        run: |
-          arm-none-eabi-gcc --version
->>>>>>> d31bb7af4baeb3d346d0455271bb7c980a7ee88e
           make -j$(nproc)
 
       - name: Upload ROM Artifact
