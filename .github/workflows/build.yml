@@ -46,18 +46,13 @@ jobs:
             cd ../..
           fi
 
-      - name: Install and Build Poryscript
+      - name: Install and Build Poryscript Properly
         run: |
           make tools
-          if [ ! -d "tools/poryscript" ]; then
-            git clone https://github.com/huderlem/poryscript.git tools/poryscript
-          fi
+          rm -rf tools/poryscript
+          git clone https://github.com/huderlem/poryscript.git tools/poryscript
           cd tools/poryscript
-          # Initialize a temporary go module if missing so go build works cleanly
-          if [ ! -f "go.mod" ]; then
-            go mod init poryscript || true
-          fi
-          go build -o poryscript
+          go build -o poryscript ./cmd/poryscript
           cd ../..
 
       - name: Build ROM
