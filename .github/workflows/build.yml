@@ -22,13 +22,24 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y build-essential libpng-dev pkg-config git curl bzip2 automake autoconf libtool
 
-      - name: Build and Install agbcc & Tools
+      - name: Build Repository Tools & agbcc
         run: |
           make tools
-          cd tools/agbcc
-          ./build.sh
-          ./install.sh ..
-          cd ../..
+          if [ -d "agbcc" ]; then
+            cd agbcc
+            ./build.sh
+            ./install.sh ..
+            cd ..
+          elif [ -d "tools/agbcc" ]; then
+            cd tools/agbcc
+            ./build.sh
+            ./install.sh ../..
+            cd ../..
+          else
+            echo "agbcc directory not found, attempting git submodule update..."
+            git submodule update --init --recursive
+            make -C tools/agbcc || true
+          fi
 
       - name: Build ROM
         run: |
