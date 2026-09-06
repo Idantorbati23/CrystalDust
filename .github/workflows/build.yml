@@ -46,20 +46,26 @@ jobs:
             cd ../..
           fi
 
-      - name: Build Repository Tools & Poryscript Safely
+      - name: Build Repository Tools & Poryscript
         run: |
           make tools
           
-          # Restore any git-tracked configuration files inside tools/poryscript that might have been removed
-          git restore tools/poryscript/ || git checkout tools/poryscript/ || true
-          
-          # Build poryscript externally in a temporary directory to avoid destroying repo files
+          # Build poryscript externally
           git clone https://github.com/huderlem/poryscript.git /tmp/poryscript-src
           cd /tmp/poryscript-src
           go build -o poryscript
           
-          # Copy only the compiled binary into tools/poryscript/
+          # Place binary into tools/poryscript/
           cp poryscript $GITHUB_WORKSPACE/tools/poryscript/
+          
+          # Ensure command_config.json is present both in tools/poryscript/ and the repository root
+          if [ -f "$GITHUB_WORKSPACE/tools/poryscript/command_config.json" ]; then
+            cp "$GITHUB_WORKSPACE/tools/poryscript/command_config.json" "$GITHUB_WORKSPACE/command_config.json"
+          else
+            curl -L -o "$GITHUB_WORKSPACE/command_config.json" https://raw.githubusercontent.com/huderlem/poryscript/master/command_config.json || true
+            cp "$GITHUB_WORKSPACE/command_config.json" "$GITHUB_WORKSPACE/tools/poryscript/" || true
+          fi
+          
           cd $GITHUB_WORKSPACE
 
       - name: Build ROM
