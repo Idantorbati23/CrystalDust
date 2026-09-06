@@ -76,4 +76,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: CrystalDust-ROM
-          path: CrystalDust.gba
+          path: |
+            *.gba
+            build/**/*.gba
