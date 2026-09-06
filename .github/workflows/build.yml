@@ -49,21 +49,16 @@ jobs:
       - name: Install and Build Poryscript
         run: |
           make tools
-          if [ -d "tools/poryscript" ]; then
-            cd tools/poryscript
-            go build -o poryscript
-            cp poryscript ../../tools/poryscript/ || true
-            cd ../..
-          else
+          if [ ! -d "tools/poryscript" ]; then
             git clone https://github.com/huderlem/poryscript.git tools/poryscript
-            cd tools/poryscript
-            go build -o poryscript
-            cd ../..
           fi
-          # Ensure the binary is correctly placed where the Makefile expects it
-          if [ -f "tools/poryscript/poryscript/poryscript" ]; then
-            mv tools/poryscript/poryscript/poryscript tools/poryscript/poryscript
+          cd tools/poryscript
+          # Initialize a temporary go module if missing so go build works cleanly
+          if [ ! -f "go.mod" ]; then
+            go mod init poryscript || true
           fi
+          go build -o poryscript
+          cd ../..
 
       - name: Build ROM
         run: |
