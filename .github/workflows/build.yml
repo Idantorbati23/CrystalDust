@@ -52,7 +52,7 @@ jobs:
           rm -rf tools/poryscript
           git clone https://github.com/huderlem/poryscript.git tools/poryscript
           cd tools/poryscript
-          go build -o poryscript ./cmd/poryscript
+          go build -o poryscript .
           cd ../..
 
       - name: Build ROM
