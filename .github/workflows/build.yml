@@ -1,76 +1,39 @@
-name: CI
+name: Build CrystalDust
 
 on:
   push:
-    branches: [ master ]
+    branches: [ "progrees" ]
   pull_request:
+    branches: [ "progrees" ]
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    env:
-      GAME_VERSION: EMERALD
-      GAME_REVISION: 0
-      GAME_LANGUAGE: ENGLISH
-      MODERN: 0
-      COMPARE: 1
     steps:
-      - name: Checkout
-        uses: actions/checkout@master
-
-      - name: Checkout syms
-        if: ${{ github.event_name == 'push' }}
-        uses: actions/checkout@master
+      - name: Check out repository
+        uses: actions/checkout@v4
         with:
-          path: symbols
-          ref: symbols
+          submodules: recursive
+          ref: progrees
 
-      - name: Checkout agbcc
-        uses: actions/checkout@master
-        with:
-          path: agbcc
-          repository: pret/agbcc
-
-      - name: Install binutils
-        run: sudo apt install gcc-arm-none-eabi binutils-arm-none-eabi
-        # build-essential, git, and libpng-dev are already installed
-        # gcc-arm-none-eabi is only needed for the modern build
-        # as an alternative to dkP
-
-      - name: Install agbcc
+      - name: Install Host Dependencies
         run: |
-          ./build.sh
-          ./install.sh ../
-        working-directory: agbcc
+          sudo apt-get update
+          sudo apt-get install -y build-essential libpng-dev pkg-config git curl bzip2
 
-      - name: Compare
-        run: make -j${nproc} all syms
-
-      - name: Modern
-        env:
-          MODERN: 1
-          COMPARE: 0
-        run: make -j${nproc} all
-
-      - name: Webhook
-        if: ${{ github.event_name == 'push' && github.repository_owner == 'pret' }}
-        env:
-          CALCROM_DISCORD_WEBHOOK_USERNAME: OK
-          CALCROM_DISCORD_WEBHOOK_AVATAR_URL: https://i.imgur.com/38BQHdd.png
-          CALCROM_DISCORD_WEBHOOK_URL: ${{ secrets.CALCROM_DISCORD_WEBHOOK_URL }}
-        run: sh .github/calcrom/webhook.sh pokeemerald
-
-      - name: Move symfiles
-        if: ${{ github.event_name == 'push' }}
+      - name: Download and Setup ARM GCC 10
         run: |
-          cp -v *.sym symbols/
-          echo "SYMBOLS_COMMIT_MSG=$( git log --format=%s ${GITHUB_SHA} )" >> $GITHUB_ENV
+          curl -L -o gcc-arm-none-eabi.tar.bz2 https://developer.arm.com/-/media/Files/downloads/gnu-rm/10.3-2021.10/gcc-arm-none-eabi-10.3-2021.10-x86_64-linux.tar.bz2
+          tar -xf gcc-arm-none-eabi.tar.bz2
+          echo "$PWD/gcc-arm-none-eabi-10.3-2021.10/bin" >> $GITHUB_PATH
 
-      - name: Update symfiles
-        if: ${{ github.event_name == 'push' }}
-        uses: EndBug/add-and-commit@v7
+      - name: Build Modern ROM
+        run: |
+          arm-none-eabi-gcc --version
+          make modern -j$(nproc)
+
+      - name: Upload ROM Artifact
+        uses: actions/upload-artifact@v4
         with:
-          branch: symbols
-          cwd: "./symbols"
-          add: "*.sym"
-          message: ${{ env.SYMBOLS_COMMIT_MSG }}
+          name: CrystalDust-ROM
+          path: CrystalDust.gba
