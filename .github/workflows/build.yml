@@ -22,6 +22,12 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y build-essential libpng-dev pkg-config git curl bzip2 automake autoconf libtool
 
+      - name: Download and Setup ARM GCC 6
+        run: |
+          curl -L -o gcc-arm-none-eabi.tar.bz2 https://developer.arm.com/-/media/Files/downloads/gnu-rm/6-2017q2/gcc-arm-none-eabi-6-2017-q2-update-linux.tar.bz2
+          tar -xf gcc-arm-none-eabi.tar.bz2
+          echo "$PWD/gcc-arm-none-eabi-6-2017-q2-update/bin" >> $GITHUB_PATH
+
       - name: Clone and Build agbcc
         run: |
           if [ ! -d "agbcc" ] && [ ! -d "tools/agbcc" ]; then
