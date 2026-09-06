@@ -20,7 +20,7 @@ jobs:
       - name: Install Host Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential libpng-dev pkg-config git curl bzip2 automake autoconf libtool
+          sudo apt-get install -y build-essential libpng-dev pkg-config git curl bzip2 automake autoconf libtool golang-go
 
       - name: Download and Setup ARM GCC 6
         run: |
@@ -46,11 +46,17 @@ jobs:
             cd ../..
           fi
 
-      - name: Build Repository Tools (Including poryscript)
+      - name: Build Repository Tools & Poryscript
         run: |
           make tools
-          if [ -d "tools/poryscript" ] && [ ! -f "tools/poryscript/poryscript" ]; then
-            make -C tools/poryscript
+          if [ -d "tools/poryscript" ]; then
+            cd tools/poryscript
+            if [ -f "go.mod" ]; then
+              go build -o poryscript
+            elif [ -f "build.sh" ]; then
+              ./build.sh
+            fi
+            cd ../..
           fi
 
       - name: Build ROM
