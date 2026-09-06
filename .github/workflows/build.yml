@@ -46,9 +46,12 @@ jobs:
             cd ../..
           fi
 
-      - name: Build Repository Tools
+      - name: Build Repository Tools (Including poryscript)
         run: |
           make tools
+          if [ -d "tools/poryscript" ] && [ ! -f "tools/poryscript/poryscript" ]; then
+            make -C tools/poryscript
+          fi
 
       - name: Build ROM
         run: |
