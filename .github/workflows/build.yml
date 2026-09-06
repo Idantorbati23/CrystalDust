@@ -50,13 +50,19 @@ jobs:
         run: |
           make tools
           
-          # Clone poryscript source externally and build it so we don't wipe out command_config.json
+          # Build poryscript externally to preserve existing repository config files
           git clone https://github.com/huderlem/poryscript.git /tmp/poryscript-src
           cd /tmp/poryscript-src
           go build -o poryscript
           
-          # Place the compiled binary right next to command_config.json in tools/poryscript/
+          # Place the binary into tools/poryscript/
           cp poryscript $GITHUB_WORKSPACE/tools/poryscript/
+          
+          # Ensure command_config.json is available in both the tools directory and root
+          if [ -f "$GITHUB_WORKSPACE/tools/poryscript/command_config.json" ]; then
+            cp "$GITHUB_WORKSPACE/tools/poryscript/command_config.json" "$GITHUB_WORKSPACE/"
+          fi
+          
           cd $GITHUB_WORKSPACE
 
       - name: Build ROM
