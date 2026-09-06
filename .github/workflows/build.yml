@@ -24,14 +24,14 @@ jobs:
 
       - name: Compile Repository Tools
         run: |
-          make -C tools/poryscript || make tools
+          make tools
 
       - name: Download and Setup ARM GCC 6
         run: |
           curl -L -o gcc-arm-none-eabi.tar.bz2 https://developer.arm.com/-/media/Files/downloads/gnu-rm/6-2017q2/gcc-arm-none-eabi-6-2017-q2-update-linux.tar.bz2
           tar -xf gcc-arm-none-eabi.tar.bz2
           echo "$PWD/gcc-arm-none-eabi-6-2017-q2-update/bin" >> $GITHUB_PATH
-          echo "CPATH=$PWD/gcc-arm-none-eabi-6-2017-q2-update/lib/gcc/arm-none-eabi/6.3.1/include" >> $GITHUB_ENV
+          echo "CPATH=$PWD/gcc-arm-none-eabi-6-2017-q2-update/lib/gcc/arm-none-eabi/6.3.1/include:$PWD/gcc-arm-none-eabi-6-2017-q2-update/arm-none-eabi/include" >> $GITHUB_ENV
 
       - name: Build ROM
         run: |
