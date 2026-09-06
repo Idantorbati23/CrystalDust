@@ -46,14 +46,17 @@ jobs:
             cd ../..
           fi
 
-      - name: Install and Build Poryscript Properly
+      - name: Build Repository Tools & Poryscript In-Place
         run: |
           make tools
-          rm -rf tools/poryscript
-          git clone https://github.com/huderlem/poryscript.git tools/poryscript
-          cd tools/poryscript
-          go build -o poryscript .
-          cd ../..
+          if [ -d "tools/poryscript" ]; then
+            cd tools/poryscript
+            if [ ! -f "go.mod" ]; then
+              go mod init poryscript || true
+            fi
+            go build -o poryscript || go build -o poryscript .
+            cd ../..
+          fi
 
       - name: Build ROM
         run: |
