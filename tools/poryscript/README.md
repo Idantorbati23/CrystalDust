@@ -52,14 +52,14 @@ Poryscript is a command-line program.  It reads an input script and outputs the 
 > ./poryscript -h
 Usage of poryscript:
   -f string
-        set default font id (leave empty to use default defined in font widths config file)
-  -fw string
-        font widths config JSON file (default "font_widths.json")
+        set default font id (leave empty to use default defined in font config file)
+  -fc string
+        font config JSON file (default "font_config.json")
   -h    show poryscript help information
   -i string
         input poryscript file (leave empty to read from standard input)
   -l int
-        set default line length in pixels for formatted text (default 208)
+        set default line length in pixels for formatted text (uses font config file for default)
   -o string
         output script file (leave empty to write to standard output)
   -optimize
@@ -75,24 +75,26 @@ Convert a `.pory` script to a compiled `.inc` script, which can be directly incl
 ```
 
 To automatically convert your Poryscript scripts when compiling a decomp project, perform these two steps:
-1. Create a new `tools/poryscript/` directory, and add the `poryscript` command-line executable tool to it. Also copy `font_widths.json` to the same location.
+1. Create a new `tools/poryscript/` directory, and add the `poryscript` command-line executable tool to it. Also copy `font_config.json` to the same location.
 ```
 # For example, on Windows, place the files here.
 pokeemerald/tools/poryscript/poryscript.exe
-pokeemerald/tools/poryscript/font_widths.json
+pokeemerald/tools/poryscript/font_config.json
 ```
 It's also a good idea to add `tools/poryscript` to your `.gitignore` before your next commit.
 
 2. Update the Makefile with these changes (Note, don't add the `+` symbol at the start of the lines. That's just to show the line is being added.):
 ```diff
+FIX := tools/gbafix/gbafix$(EXE)
+MAPJSON := tools/mapjson/mapjson$(EXE)
+JSONPROC := tools/jsonproc/jsonproc$(EXE)
 + SCRIPT := tools/poryscript/poryscript$(EXE)
 ```
 ```diff
-mostlyclean: tidy
-	rm -f sound/direct_sound_samples/*.bin
-	rm -f $(MID_SUBDIR)/*.s
-	find . \( -iname '*.1bpp' -o -iname '*.4bpp' -o -iname '*.8bpp' -o -iname '*.gbapal' -o -iname '*.lz' -o -iname '*.latfont' -o -iname '*.hwjpnfont' -o -iname '*.fwjpnfont' \) -exec rm {} +
+mostlyclean: tidynonmodern tidymodern
+	...
 	rm -f $(AUTO_GEN_TARGETS)
+	@$(MAKE) clean -C libagbsyscall
 +	rm -f $(patsubst %.pory,%.inc,$(shell find data/ -type f -name '*.pory'))
 ```
 ```diff
@@ -104,12 +106,42 @@ mostlyclean: tidy
 ```
 ```diff
 sound/%.bin: sound/%.aif ; $(AIF) $< $@
-+ data/%.inc: data/%.pory; $(SCRIPT) -i $< -o $@ -fw tools/poryscript/font_widths.json
++ data/%.inc: data/%.pory; $(SCRIPT) -i $< -o $@ -fc tools/poryscript/font_config.json
 ```
-```diff
--TOOLDIRS := $(filter-out tools/agbcc tools/binutils,$(wildcard tools/*))
-+TOOLDIRS := $(filter-out tools/agbcc tools/binutils tools/poryscript,$(wildcard tools/*))
-```
+
+## Convert Existing Scripts
+If you're working on a large project, you may want to convert all of the existing `scripts.inc` files to their `scripts.pory` equivalents. Since there are a large number of script files in the Gen 3 projects, you can save yourself a lot of time by following these instructions. **Again, this is completely optional, and you would only want to perform this bulk conversion if you're emabarking on large project where it would be useful to have all the existing scripts setup as Poryscript files.**
+
+<details>
+  <summary>Click Here to View Instructions</summary>
+
+  Convert all of your projects old map `scripts.inc` files into new `scripts.pory` files while maintaining the old scripts:
+
+  1. Create a file in your `pokeemerald/` directory named `convert_inc.sh` with the following content:
+     ```
+     #!/bin/bash
+
+     for directory in data/maps/* ; do
+     	pory_exists=$(find $directory -name $"scripts.pory" | wc -l)
+     	if [[ $pory_exists -eq 0 ]]; 
+     	then
+     		inc_exists=$(find $directory -name $"scripts.inc" | wc -l)
+     		if [[ $inc_exists -ne 0 ]]; 
+     		then
+     			echo "Converting: $directory/scripts.inc"
+     			touch "$directory/scripts.pory"
+     			echo 'raw `' >> "$directory/scripts.pory"
+     			cat "$directory/scripts.inc" >> "$directory/scripts.pory"
+     			echo '`' >> "$directory/scripts.pory"
+     		fi
+     	fi 	
+     done
+     ```
+  
+  2. Run `chmod 777 convert_inc.sh` to ensure the script executable. 
+
+  Finally you can execute it in your `pokeemerald/` directory by running `./convert_inc.sh` or `bash convert_inc.sh` in the console. This script will iterate through all your `data/map/` directories and convert the `scripts.inc` files into `scripts.pory` files by adding a `raw` tag around the old scripts. `convert_inc.sh` will skip over any directories that already have `scripts.pory` files in them, so that it will not overwrite any maps that you have already switched over to Poryscript.
+</details>
 
 3. Update `make_tools.mk` with the same change:
 ```diff
@@ -248,7 +280,7 @@ Compound boolean expressions are also supported. This means you can use the AND 
 The `while` statement can also be written as an infinite loop by omitting the boolean expression. This would be equivalent to `while(true)` in typical programming languages. (Of course, you'll want to `break` out of the infinite loop, or hard-stop the script.)
 ```
     while {
-        msgbox("Want to see this message again?", MSGBOX_YESNO")
+        msgbox("Want to see this message again?", MSGBOX_YESNO)
         if (var(VAR_RESULT) != 1) {
             break
         }
@@ -417,7 +449,7 @@ Becomes:
 The font id can optionally be specified as the second parameter to `format()`.
 ```
 text MyText {
-    format("Hello, are you the real-live legendary {PLAYER} that everyone talks about?\pAmazing!\pSo glad to meet you!", "1_latin")
+    format("Hello, are you the real-live legendary {PLAYER} that everyone talks about?\pAmazing!\pSo glad to meet you!", "1_latin_rse")
 }
 ```
 Becomes:
@@ -427,7 +459,40 @@ Becomes:
 .string "Amazing!\p"
 .string "So glad to meet you!$"
 ```
-The font widths configuration JSON file informs Poryscript how many pixels wide each character in the message is. Different fonts have different character widths. For convenience, Poryscript comes with `font_widths.json`, which contains the configuration for pokeemerald's `1_latin` font. More fonts can easily be added to this file by the user by creating anothing font id node under the `fonts` key in `font_widths.json`.
+The font configuration JSON file informs Poryscript how many pixels wide each character in the message is, as well as setting a default maximum line length. Fonts have different character widths, and games have different text box sizes. For convenience, Poryscript comes with `font_config.json`, which contains the configuration for pokeemerald's `1_latin` font as `1_latin_rse`, as well as pokefirered's equivalent as `1_latin_frlg`. More fonts can be added to this file by simply creating anothing font id node under the `fonts` key in `font_config.json`.
+
+The length of a line can optionally be specified as the third parameter to `format()` if a font id was specified as the second parameter.
+
+```
+text MyText {
+    format("Hello, are you the real-live legendary {PLAYER} that everyone talks about?\pAmazing!\pSo glad to meet you!", "1_latin_rse", 100)
+}
+```
+Becomes:
+```
+.string "Hello, are you the\n"
+.string "real-live\l"
+.string "legendary\l"
+.string "{PLAYER} that\l"
+.string "everyone talks\l"
+.string "about?\p"
+.string "Amazing!\p"
+.string "So glad to meet\n"
+.string "you!$"
+```
+
+### Custom Text Encoding
+When Poryscript compiles text, the resulting text content is rendered using the `.string` assembler directive. The decomp projects' build process then processes those `.string` directives and substituted the string characters with the game-specific text representation. It can be useful to specify different types of strings, though. For example, implementing print-debugging commands might make use of ASCII text. Poryscript allows you to specify which assembler directive to use for text. Simply add the directive as a prefix to the string content like this:
+```
+ascii"My ASCII string."
+custom"My Custom string."
+
+// compiles to...
+.ascii "My ASCII string.\0"
+.custom "My Custom string."
+```
+
+Note that Poryscript will automatically add the `\0` suffix character to ASCII strings. It will **not** add suffix to any other directives.
 
 The length of a line can optionally be specified as the third parameter to `format()` if a font id was specified as the second parameter.
 

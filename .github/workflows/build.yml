@@ -5,6 +5,7 @@ on:
     branches: [ "progrees" ]
   pull_request:
     branches: [ "progrees" ]
+  workflow_dispatch:
 
 jobs:
   build:
@@ -14,23 +15,31 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: recursive
-          ref: progrees
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install Host Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential libpng-dev pkg-config git curl bzip2
+          sudo apt-get install -y build-essential libpng-dev pkg-config git curl bzip2 automake autoconf libtool
 
-      - name: Download and Setup ARM GCC 10
+      - name: Compile Repository Tools and agbcc
         run: |
-          curl -L -o gcc-arm-none-eabi.tar.bz2 https://developer.arm.com/-/media/Files/downloads/gnu-rm/10.3-2021.10/gcc-arm-none-eabi-10.3-2021.10-x86_64-linux.tar.bz2
-          tar -xf gcc-arm-none-eabi.tar.bz2
-          echo "$PWD/gcc-arm-none-eabi-10.3-2021.10/bin" >> $GITHUB_PATH
+          make tools
+          if [ -d "tools/agbcc" ]; then
+            cd tools/agbcc
+            ./build.sh
+            ./install.sh
+            cd ../..
+          fi
 
-      - name: Build Modern ROM
+      - name: Setup agbcc Paths
         run: |
-          arm-none-eabi-gcc --version
-          make modern -j$(nproc)
+          echo "AGBCC=$PWD/tools/agbcc" >> $GITHUB_PATH
+          echo "PATH=$PWD/tools/agbcc:$PATH" >> $GITHUB_ENV
+
+      - name: Build ROM
+        run: |
+          make -j$(nproc)
 
       - name: Upload ROM Artifact
         uses: actions/upload-artifact@v4
