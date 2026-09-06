@@ -22,20 +22,13 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y build-essential libpng-dev pkg-config git curl bzip2 automake autoconf libtool
 
-      - name: Compile Repository Tools and agbcc
+      - name: Build and Install agbcc & Tools
         run: |
           make tools
-          if [ -d "tools/agbcc" ]; then
-            cd tools/agbcc
-            ./build.sh
-            ./install.sh
-            cd ../..
-          fi
-
-      - name: Setup agbcc Paths
-        run: |
-          echo "AGBCC=$PWD/tools/agbcc" >> $GITHUB_PATH
-          echo "PATH=$PWD/tools/agbcc:$PATH" >> $GITHUB_ENV
+          cd tools/agbcc
+          ./build.sh
+          ./install.sh ..
+          cd ../..
 
       - name: Build ROM
         run: |
