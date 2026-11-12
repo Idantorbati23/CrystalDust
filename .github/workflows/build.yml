@@ -1,4 +1,4 @@
-name: Build GBA ROM
+name: Build CrystalDust
 
 on:
   push:
