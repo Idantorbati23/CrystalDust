@@ -1,76 +1,70 @@
-name: CI
+name: Build GBA ROM
 
 on:
   push:
-    branches: [ master ]
+    branches: [ progress ]
   pull_request:
+    branches: [ progress ]
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    env:
-      GAME_VERSION: EMERALD
-      GAME_REVISION: 0
-      GAME_LANGUAGE: ENGLISH
-      MODERN: 0
-      COMPARE: 1
+    timeout-minutes: 20
+
     steps:
-      - name: Checkout
-        uses: actions/checkout@master
-
-      - name: Checkout syms
-        if: ${{ github.event_name == 'push' }}
-        uses: actions/checkout@master
+      - name: Checkout Repository
+        uses: actions/checkout@v4
         with:
-          path: symbols
-          ref: symbols
+          submodules: recursive
 
-      - name: Checkout agbcc
-        uses: actions/checkout@master
-        with:
-          path: agbcc
-          repository: pret/agbcc
-
-      - name: Install binutils
-        run: sudo apt install gcc-arm-none-eabi binutils-arm-none-eabi
-        # build-essential, git, and libpng-dev are already installed
-        # gcc-arm-none-eabi is only needed for the modern build
-        # as an alternative to dkP
-
-      - name: Install agbcc
+      - name: Install System Dependencies & Toolchains
         run: |
+          sudo apt-get update
+          sudo apt-get install -y curl wget build-essential python3 unzip make libpng-dev libz-dev gcc-arm-none-eabi binutils-arm-none-eabi libnewlib-arm-none-eabi
+
+      - name: Fix missing cstdint in all json11.cpp files
+        run: |
+          find . -name "json11.cpp" | while read file; do
+            echo "Patching $file"
+            sed -i '1i #include <cstdint>' "$file"
+          done
+
+      - name: Download and Install Official Poryscript Binary
+        run: |
+          mkdir -p tools/poryscript
+          wget -q https://github.com/huderlem/poryscript/releases/latest/download/poryscript-linux.zip -O poryscript-linux.zip
+          unzip -o poryscript-linux.zip -d tools/poryscript/
+          # Move files out of the nested folder if they extracted into poryscript-linux/
+          if [ -d "tools/poryscript/poryscript-linux" ]; then
+            cp -r tools/poryscript/poryscript-linux/* tools/poryscript/
+            rm -rf tools/poryscript/poryscript-linux
+          fi
+          chmod +x tools/poryscript/poryscript
+          rm poryscript-linux.zip
+
+      - name: Clone, Build, and Install agbcc
+        run: |
+          mkdir -p tools/agbcc
+          if [ ! -f "tools/agbcc/build.sh" ]; then
+            rm -rf tools/agbcc
+            git clone https://github.com/pret/agbcc tools/agbcc
+          fi
+          
+          cd tools/agbcc
           ./build.sh
-          ./install.sh ../
-        working-directory: agbcc
+          ./install.sh ../../
+          cd ../..
+          make tools
 
-      - name: Compare
-        run: make -j${nproc} all syms
-
-      - name: Modern
-        env:
-          MODERN: 1
-          COMPARE: 0
-        run: make -j${nproc} all
-
-      - name: Webhook
-        if: ${{ github.event_name == 'push' && github.repository_owner == 'pret' }}
-        env:
-          CALCROM_DISCORD_WEBHOOK_USERNAME: OK
-          CALCROM_DISCORD_WEBHOOK_AVATAR_URL: https://i.imgur.com/38BQHdd.png
-          CALCROM_DISCORD_WEBHOOK_URL: ${{ secrets.CALCROM_DISCORD_WEBHOOK_URL }}
-        run: sh .github/calcrom/webhook.sh pokeemerald
-
-      - name: Move symfiles
-        if: ${{ github.event_name == 'push' }}
+      - name: Run Sequential Modern Build
         run: |
-          cp -v *.sym symbols/
-          echo "SYMBOLS_COMMIT_MSG=$( git log --format=%s ${GITHUB_SHA} )" >> $GITHUB_ENV
+          export CC=arm-none-eabi-gcc
+          make modern
 
-      - name: Update symfiles
-        if: ${{ github.event_name == 'push' }}
-        uses: EndBug/add-and-commit@v7
+      - name: Upload Compiled ROM
+        uses: actions/upload-artifact@v4
         with:
-          branch: symbols
-          cwd: "./symbols"
-          add: "*.sym"
-          message: ${{ env.SYMBOLS_COMMIT_MSG }}
+          name: gba-rom
+          path: |
+            *.gba
+            build/*.gba
